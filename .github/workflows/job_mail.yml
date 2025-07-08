@@ -1,0 +1,25 @@
+name: Daily Job Email Sender
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # Runs daily at 12 PM Germany time (CET = UTC+2)
+  workflow_dispatch:
+
+jobs:
+  send_email:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Run Python script
+      env:
+        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+      run: python daily_job_mailer.py
