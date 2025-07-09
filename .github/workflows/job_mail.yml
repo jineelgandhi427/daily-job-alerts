@@ -1,8 +1,9 @@
+
 name: Daily Job Email Sender
 
 on:
   schedule:
-    - cron: '0 10 * * *'  # Runs daily at 12 PM Germany time (CET = UTC+2)
+    - cron: '0 10 * * *'  # Runs every day at 12 PM Germany time (CET = UTC+2)
   workflow_dispatch:
 
 jobs:
