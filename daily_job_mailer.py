@@ -6,9 +6,9 @@ import os
 
 # Job links (edit or replace with live scraped links)
 job_links = [
-    "https://www.linkedin.com/jobs/search?keywords=Mechatronics%20Engineer&location=Germany",
-    "https://www.indeed.com/q-mechatronics-engineer-germany-jobs.html",
-    "https://www.stepstone.de/en/jobs/mechatronics/"
+    "https://www.linkedin.com/jobs/search/?keywords=Mechatronics%20Engineer&location=Germany&f_TP=1&sortBy=DD",
+    "https://www.linkedin.com/jobs/search/?keywords=Simulation%20Engineer&location=Germany&f_TP=1&sortBy=DD",
+    "https://www.linkedin.com/jobs/search/?keywords=Test%20Engineer&location=Germany&f_TP=1&sortBy=DD"
 ]
 
 def format_email_body(links):
