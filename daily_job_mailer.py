@@ -4,27 +4,26 @@ import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-# Job filtering keywords (based on resume)
+# Keywords based on resume
 KEYWORDS = [
     "mechatronics", "simulation", "sensor", "test engineer", "digital twin",
     "solidworks", "fusion 360", "robotics", "python", "ros", "unity", "test bench"
 ]
 
 SEARCH_TERMS = [
-    "mechatronics engineer",
-    "sensor test engineer",
-    "simulation engineer",
-    "robotics developer",
-    "digital twin engineer",
-    "test development"
+    "mechatronics engineer", "sensor test engineer", "simulation engineer",
+    "robotics developer", "digital twin engineer", "test development"
 ]
 
 SEARCH_URLS = {
-    "LinkedIn - Mechatronics (24h)": "https://www.linkedin.com/jobs/search/?keywords=Mechatronics%20Engineer&location=Germany&f_TP=1&sortBy=DD",
-    "LinkedIn - Simulation (24h)": "https://www.linkedin.com/jobs/search/?keywords=Simulation%20Engineer&location=Germany&f_TP=1&sortBy=DD",
     "Indeed": "https://de.indeed.com/jobs?q={query}&l=Germany&fromage=1",
     "StepStone": "https://www.stepstone.de/en/jobs/{query}/germany/",
     "Jobtensor": "https://jobtensor.com/Jobs?q={query}&l=germany"
+}
+
+LINKEDIN_URLS = {
+    "LinkedIn - Mechatronics (24h)": "https://www.linkedin.com/jobs/search/?keywords=Mechatronics%20Engineer&location=Germany&f_TP=1&sortBy=DD",
+    "LinkedIn - Simulation (24h)": "https://www.linkedin.com/jobs/search/?keywords=Simulation%20Engineer&location=Germany&f_TP=1&sortBy=DD"
 }
 
 def fetch_links(query, url_template, site_name):
@@ -40,19 +39,18 @@ def fetch_links(query, url_template, site_name):
             if any(k in title for k in KEYWORDS) and "ausbildung" not in title:
                 full_link = href if href.startswith("http") else f"https://{site_name.lower()}.de{href}"
                 jobs.append((title.title(), site_name, full_link))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"❌ Error fetching from {site_name}: {e}")
+    print(f"✅ {site_name}: {len(jobs)} jobs found.")
     return jobs
 
 def collect_jobs():
     results = []
     for term in SEARCH_TERMS:
-        results += fetch_links(term, SEARCH_URLS["Indeed"], "Indeed")
-        results += fetch_links(term, SEARCH_URLS["StepStone"], "StepStone")
-        results += fetch_links(term, SEARCH_URLS["Jobtensor"], "Jobtensor")
-    for label, link in SEARCH_URLS.items():
-        if "LinkedIn" in label:
-            results.append((label, "LinkedIn", link))
+        for site, url in SEARCH_URLS.items():
+            results += fetch_links(term, url, site)
+    for label, link in LINKEDIN_URLS.items():
+        results.append((label, "LinkedIn", link))
     return results
 
 def format_html(jobs):
@@ -65,11 +63,17 @@ def format_html(jobs):
     html += "</ul><br><i>This is an automated message.</i>"
     return html
 
+def write_txt(jobs, path):
+    with open(path, "w", encoding="utf-8") as f:
+        for title, site, link in jobs:
+            f.write(f"{title} – {site}\n{link}\n\n")
+
 # Collect job matches
 jobs = collect_jobs()
 html_body = format_html(jobs)
+write_txt(jobs, "matched_jobs.txt")
 
-# Prepare API call to Brevo
+# Email via Brevo API
 API_KEY = os.getenv("BREVO_API_KEY")
 headers = {
     "accept": "application/json",
@@ -83,7 +87,17 @@ payload = {
     "htmlContent": html_body
 }
 
-# Send email using Brevo API
+# Attach plain text file as fallback
+try:
+    with open("matched_jobs.txt", "r", encoding="utf-8") as f:
+        file_content = f.read()
+    payload["attachment"] = [{
+        "content": file_content.encode("utf-8").decode("utf-8"),
+        "name": "matched_jobs.txt"
+    }]
+except Exception as e:
+    print("⚠️ Could not attach fallback job list:", str(e))
+
 try:
     response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
     if response.status_code == 201:
