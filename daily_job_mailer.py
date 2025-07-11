@@ -1,10 +1,7 @@
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from datetime import datetime
 import os
 import requests
+from datetime import datetime
 from bs4 import BeautifulSoup
 
 # Job filtering keywords (based on resume)
@@ -58,42 +55,40 @@ def collect_jobs():
             results.append((label, "LinkedIn", link))
     return results
 
-def format_email_body(jobs):
+def format_html(jobs):
     date = datetime.now().strftime('%d %B %Y')
     if not jobs:
-        return f"<p><b>No matching jobs found today.</b></p>"
+        return "<p><b>No matching jobs found today.</b></p>"
     html = f"<h3>🔍 Matched Jobs – {date}</h3><ul>"
     for title, site, link in jobs:
         html += f"<li><b>{title}</b> – <i>{site}</i><br><a href='{link}'>Apply Now</a></li><br>"
     html += "</ul><br><i>This is an automated message.</i>"
     return html
 
-# Environment variables from GitHub secrets
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_LOGIN = os.getenv("SMTP_LOGIN")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
-SENDER_EMAIL = SMTP_LOGIN
-
-# Prepare email
+# Collect job matches
 jobs = collect_jobs()
-body = format_email_body(jobs)
+html_body = format_html(jobs)
 
-msg = MIMEMultipart("alternative")
-msg["Subject"] = "🔔 Daily Germany Job Alerts – Profile Matched"
-msg["From"] = SENDER_EMAIL
-msg["To"] = RECEIVER_EMAIL
-msg.attach(MIMEText(body, "html"))
+# Prepare API call to Brevo
+API_KEY = os.getenv("BREVO_API_KEY")
+headers = {
+    "accept": "application/json",
+    "api-key": API_KEY,
+    "content-type": "application/json"
+}
+payload = {
+    "sender": {"name": "Job Bot", "email": "noreply@dailyjobbot.ai"},
+    "to": [{"email": "jineelgandhi426@gmail.com"}],
+    "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
+    "htmlContent": html_body
+}
 
-# Send email via Brevo SMTP
+# Send email using Brevo API
 try:
-    server = smtplib.SMTP()
-    server.connect(SMTP_SERVER, SMTP_PORT)
-    server.starttls()
-    server.login(SMTP_LOGIN, SMTP_PASSWORD)
-    server.send_message(msg)
-    server.quit()
-    print("✅ Email sent successfully.")
+    response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+    if response.status_code == 201:
+        print("✅ Email sent successfully via Brevo API.")
+    else:
+        print("❌ Failed to send email:", response.status_code, response.text)
 except Exception as e:
-    print("❌ Error sending email:", str(e))
+    print("❌ Exception occurred:", str(e))
