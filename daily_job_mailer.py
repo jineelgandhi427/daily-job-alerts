@@ -1,10 +1,11 @@
 
 import os
 import requests
+import base64
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-# Keywords based on resume
+# Keywords for matching
 KEYWORDS = [
     "mechatronics", "simulation", "sensor", "test engineer", "digital twin",
     "solidworks", "fusion 360", "robotics", "python", "ros", "unity", "test bench"
@@ -68,12 +69,21 @@ def write_txt(jobs, path):
         for title, site, link in jobs:
             f.write(f"{title} – {site}\n{link}\n\n")
 
-# Collect job matches
+# Collect jobs and write file
 jobs = collect_jobs()
 html_body = format_html(jobs)
-write_txt(jobs, "matched_jobs.txt")
+txt_path = "matched_jobs.txt"
+write_txt(jobs, txt_path)
 
-# Email via Brevo API
+# Read and encode attachment
+encoded_attachment = ""
+try:
+    with open(txt_path, "rb") as file:
+        encoded_attachment = base64.b64encode(file.read()).decode("utf-8")
+except Exception as e:
+    print("⚠️ Could not encode attachment:", str(e))
+
+# Prepare and send email via Brevo API
 API_KEY = os.getenv("BREVO_API_KEY")
 headers = {
     "accept": "application/json",
@@ -87,16 +97,12 @@ payload = {
     "htmlContent": html_body
 }
 
-# Attach plain text file as fallback
-try:
-    with open("matched_jobs.txt", "r", encoding="utf-8") as f:
-        file_content = f.read()
+# Attach file if encoding was successful
+if encoded_attachment:
     payload["attachment"] = [{
-        "content": file_content.encode("utf-8").decode("utf-8"),
+        "content": encoded_attachment,
         "name": "matched_jobs.txt"
     }]
-except Exception as e:
-    print("⚠️ Could not attach fallback job list:", str(e))
 
 try:
     response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
