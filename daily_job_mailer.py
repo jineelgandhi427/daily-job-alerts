@@ -88,10 +88,12 @@ msg.attach(MIMEText(body, "html"))
 
 # Send email via Brevo SMTP
 try:
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_LOGIN, SMTP_PASSWORD)
-        server.send_message(msg)
+    server = smtplib.SMTP()
+    server.connect(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(SMTP_LOGIN, SMTP_PASSWORD)
+    server.send_message(msg)
+    server.quit()
     print("✅ Email sent successfully.")
 except Exception as e:
     print("❌ Error sending email:", str(e))
