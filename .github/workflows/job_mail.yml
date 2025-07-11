@@ -22,4 +22,6 @@ jobs:
         pip install requests beautifulsoup4
 
     - name: Run job scraper script
+      env:
+        BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
       run: python daily_job_mailer.py
