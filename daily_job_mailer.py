@@ -1,11 +1,8 @@
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from datetime import datetime
 import os
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 KEYWORDS = [
     "mechatronics", "simulation", "sensor", "test engineer", "digital twin",
@@ -29,7 +26,7 @@ SEARCH_URLS = {
     "Jobtensor": "https://jobtensor.com/Jobs?q={query}&l=germany"
 }
 
-def fetch_links_from_site(query, url_template, site_name):
+def fetch_links(query, url_template, site_name):
     jobs = []
     headers = {"User-Agent": "Mozilla/5.0"}
     url = url_template.format(query=query.replace(" ", "+"))
@@ -47,44 +44,27 @@ def fetch_links_from_site(query, url_template, site_name):
     return jobs
 
 def collect_jobs():
-    all_jobs = []
+    results = []
     for term in SEARCH_TERMS:
-        all_jobs += fetch_links_from_site(term, SEARCH_URLS["Indeed"], "Indeed")
-        all_jobs += fetch_links_from_site(term, SEARCH_URLS["StepStone"], "StepStone")
-        all_jobs += fetch_links_from_site(term, SEARCH_URLS["Jobtensor"], "Jobtensor")
-
+        results += fetch_links(term, SEARCH_URLS["Indeed"], "Indeed")
+        results += fetch_links(term, SEARCH_URLS["StepStone"], "StepStone")
+        results += fetch_links(term, SEARCH_URLS["Jobtensor"], "Jobtensor")
     for label, link in SEARCH_URLS.items():
         if "LinkedIn" in label:
-            all_jobs.append((label, "LinkedIn", link))
-    return all_jobs
+            results.append((label, "LinkedIn", link))
+    return results
 
-def format_email(jobs):
-    if not jobs:
-        return "No matching jobs found today."
-    html = f"<h3>🔍 Matched Jobs – {datetime.now().strftime('%d %B %Y')}</h3><ul>"
-    for title, source, link in jobs:
-        html += f"<li><b>{title}</b> – <i>{source}</i><br><a href='{link}'>Apply Now</a></li><br>"
-    html += "</ul><br><i>This is an automated message based on your resume profile.</i>"
-    return html
+def write_to_file(jobs):
+    date = datetime.now().strftime('%d %B %Y')
+    with open("matched_jobs.txt", "w", encoding="utf-8") as f:
+        f.write(f"🔍 Matched Jobs – {date}\n\n")
+        if not jobs:
+            f.write("No matching jobs found today.\n")
+        else:
+            for title, site, link in jobs:
+                f.write(f"{title} – via {site}\n{link}\n\n")
+    print("✅ Job list written to matched_jobs.txt")
 
-sender_email = os.getenv("SENDER_EMAIL")
-receiver_email = os.getenv("RECEIVER_EMAIL")
-app_password = os.getenv("APP_PASSWORD")
-
-message = MIMEMultipart("alternative")
-message["Subject"] = "🔔 Daily Germany Job Alerts – Profile Matched"
-message["From"] = sender_email
-message["To"] = receiver_email
-
-jobs = collect_jobs()
-email_body = format_email(jobs)
-message.attach(MIMEText(email_body, "html"))
-
-try:
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(sender_email, app_password)
-        server.send_message(message)
-        print("✅ Email sent successfully.")
-except Exception as e:
-    print("❌ Error sending email:", str(e))
+if __name__ == "__main__":
+    job_results = collect_jobs()
+    write_to_file(job_results)
