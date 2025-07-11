@@ -77,7 +77,7 @@ headers = {
     "content-type": "application/json"
 }
 payload = {
-    "sender": {"name": "Job Bot", "email": "noreply@dailyjobbot.ai"},
+    "sender": {"name": "Jineel Gandhi", "email": "jineelgandhi426@gmail.com"},
     "to": [{"email": "jineelgandhi426@gmail.com"}],
     "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
     "htmlContent": html_body
