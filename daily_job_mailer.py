@@ -1,9 +1,13 @@
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from datetime import datetime
 import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
 
+# Job filtering keywords (based on resume)
 KEYWORDS = [
     "mechatronics", "simulation", "sensor", "test engineer", "digital twin",
     "solidworks", "fusion 360", "robotics", "python", "ros", "unity", "test bench"
@@ -54,17 +58,40 @@ def collect_jobs():
             results.append((label, "LinkedIn", link))
     return results
 
-def write_to_file(jobs):
+def format_email_body(jobs):
     date = datetime.now().strftime('%d %B %Y')
-    with open("matched_jobs.txt", "w", encoding="utf-8") as f:
-        f.write(f"🔍 Matched Jobs – {date}\n\n")
-        if not jobs:
-            f.write("No matching jobs found today.\n")
-        else:
-            for title, site, link in jobs:
-                f.write(f"{title} – via {site}\n{link}\n\n")
-    print("✅ Job list written to matched_jobs.txt")
+    if not jobs:
+        return f"<p><b>No matching jobs found today.</b></p>"
+    html = f"<h3>🔍 Matched Jobs – {date}</h3><ul>"
+    for title, site, link in jobs:
+        html += f"<li><b>{title}</b> – <i>{site}</i><br><a href='{link}'>Apply Now</a></li><br>"
+    html += "</ul><br><i>This is an automated message.</i>"
+    return html
 
-if __name__ == "__main__":
-    job_results = collect_jobs()
-    write_to_file(job_results)
+# Environment variables from GitHub secrets
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_LOGIN = os.getenv("SMTP_LOGIN")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
+SENDER_EMAIL = SMTP_LOGIN
+
+# Prepare email
+jobs = collect_jobs()
+body = format_email_body(jobs)
+
+msg = MIMEMultipart("alternative")
+msg["Subject"] = "🔔 Daily Germany Job Alerts – Profile Matched"
+msg["From"] = SENDER_EMAIL
+msg["To"] = RECEIVER_EMAIL
+msg.attach(MIMEText(body, "html"))
+
+# Send email via Brevo SMTP
+try:
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_LOGIN, SMTP_PASSWORD)
+        server.send_message(msg)
+    print("✅ Email sent successfully.")
+except Exception as e:
+    print("❌ Error sending email:", str(e))
