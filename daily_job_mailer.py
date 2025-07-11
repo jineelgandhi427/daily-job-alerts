@@ -1,114 +1,90 @@
-
 import os
 import requests
-import base64
-from datetime import datetime
 from bs4 import BeautifulSoup
+from datetime import datetime
 
-# Keywords for matching
-KEYWORDS = [
-    "mechatronics", "simulation", "sensor", "test engineer", "digital twin",
-    "solidworks", "fusion 360", "robotics", "python", "ros", "unity", "test bench"
+# Step 1: Define broad matching terms
+INCLUDE_KEYWORDS = [
+    "mechatronics", "simulation", "test", "sensor", "r&d", "hardware", "automation",
+    "development engineer", "graduate", "entry", "robotics", "embedded"
 ]
+EXCLUDE_KEYWORDS = ["ausbildung", "nurse", "sales", "praktikum", "pflege", "azubi"]
 
 SEARCH_TERMS = [
-    "mechatronics engineer", "sensor test engineer", "simulation engineer",
-    "robotics developer", "digital twin engineer", "test development"
+    "mechatronics engineer", "test engineer", "simulation", "graduate engineer", "r&d engineer", "hardware developer"
 ]
 
-SEARCH_URLS = {
-    "Indeed": "https://de.indeed.com/jobs?q={query}&l=Germany&fromage=1",
+# Step 2: Define sources
+SOURCES = {
     "StepStone": "https://www.stepstone.de/en/jobs/{query}/germany/",
     "Jobtensor": "https://jobtensor.com/Jobs?q={query}&l=germany"
 }
 
-LINKEDIN_URLS = {
-    "LinkedIn - Mechatronics (24h)": "https://www.linkedin.com/jobs/search/?keywords=Mechatronics%20Engineer&location=Germany&f_TP=1&sortBy=DD",
-    "LinkedIn - Simulation (24h)": "https://www.linkedin.com/jobs/search/?keywords=Simulation%20Engineer&location=Germany&f_TP=1&sortBy=DD"
-}
-
-def fetch_links(query, url_template, site_name):
+# Step 3: Scrape logic
+def fetch_jobs(site_name, base_url, query):
     jobs = []
     headers = {"User-Agent": "Mozilla/5.0"}
-    url = url_template.format(query=query.replace(" ", "+"))
+    url = base_url.format(query=query.replace(" ", "+"))
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
-        for link in soup.find_all("a", href=True):
-            title = link.get_text(strip=True).lower()
-            href = link["href"]
-            if any(k in title for k in KEYWORDS) and "ausbildung" not in title:
-                full_link = href if href.startswith("http") else f"https://{site_name.lower()}.de{href}"
-                jobs.append((title.title(), site_name, full_link))
+        resp = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            title = a.get_text(strip=True).lower()
+            if any(kw in title for kw in INCLUDE_KEYWORDS) and not any(x in title for x in EXCLUDE_KEYWORDS):
+                full_url = a["href"]
+                if not full_url.startswith("http"):
+                    full_url = f"https://{site_name.lower()}.com{full_url}"
+                jobs.append((title.title(), full_url, site_name))
     except Exception as e:
-        print(f"❌ Error fetching from {site_name}: {e}")
-    print(f"✅ {site_name}: {len(jobs)} jobs found.")
+        print(f"❌ {site_name} failed: {e}")
+    print(f"✅ {site_name}: {len(jobs)} jobs matched for '{query}'")
     return jobs
 
-def collect_jobs():
-    results = []
-    for term in SEARCH_TERMS:
-        for site, url in SEARCH_URLS.items():
-            results += fetch_links(term, url, site)
-    for label, link in LINKEDIN_URLS.items():
-        results.append((label, "LinkedIn", link))
-    return results
+# Step 4: Collect all jobs
+def collect_all_jobs():
+    all_jobs = []
+    for query in SEARCH_TERMS:
+        for source, url in SOURCES.items():
+            jobs = fetch_jobs(source, url, query)
+            all_jobs.extend(jobs)
+    return list(dict.fromkeys(all_jobs))  # remove duplicates
 
+# Step 5: Format email content
 def format_html(jobs):
-    date = datetime.now().strftime('%d %B %Y')
     if not jobs:
         return "<p><b>No matching jobs found today.</b></p>"
+    date = datetime.now().strftime('%d %B %Y')
     html = f"<h3>🔍 Matched Jobs – {date}</h3><ul>"
-    for title, site, link in jobs:
-        html += f"<li><b>{title}</b> – <i>{site}</i><br><a href='{link}'>Apply Now</a></li><br>"
-    html += "</ul><br><i>This is an automated message.</i>"
+    for title, link, source in jobs:
+        html += f"<li><b>{title}</b> – <i>{source}</i><br><a href='{link}' target='_blank'>Apply Now</a></li><br>"
+    html += "</ul><br><i>This is an automated daily alert based on your resume.</i>"
     return html
 
-def write_txt(jobs, path):
-    with open(path, "w", encoding="utf-8") as f:
-        for title, site, link in jobs:
-            f.write(f"{title} – {site}\n{link}\n\n")
+# Step 6: Send email via Brevo API
+def send_email(html_body):
+    API_KEY = os.getenv("BREVO_API_KEY")
+    headers = {
+        "accept": "application/json",
+        "api-key": API_KEY,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": "Jineel Gandhi", "email": "jineelgandhi426@gmail.com"},
+        "to": [{"email": "jineelgandhi426@gmail.com"}],
+        "subject": "🔔 Daily Germany Job Alerts – Realtime Matches",
+        "htmlContent": html_body
+    }
+    try:
+        res = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+        if res.status_code == 201:
+            print("✅ Email sent successfully.")
+        else:
+            print(f"❌ Email failed: {res.status_code} {res.text}")
+    except Exception as e:
+        print("❌ Email exception:", str(e))
 
-# Collect jobs and write file
-jobs = collect_jobs()
-html_body = format_html(jobs)
-txt_path = "matched_jobs.txt"
-write_txt(jobs, txt_path)
-
-# Read and encode attachment
-encoded_attachment = ""
-try:
-    with open(txt_path, "rb") as file:
-        encoded_attachment = base64.b64encode(file.read()).decode("utf-8")
-except Exception as e:
-    print("⚠️ Could not encode attachment:", str(e))
-
-# Prepare and send email via Brevo API
-API_KEY = os.getenv("BREVO_API_KEY")
-headers = {
-    "accept": "application/json",
-    "api-key": API_KEY,
-    "content-type": "application/json"
-}
-payload = {
-    "sender": {"name": "Jineel Gandhi", "email": "jineelgandhi426@gmail.com"},
-    "to": [{"email": "jineelgandhi426@gmail.com"}],
-    "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
-    "htmlContent": html_body
-}
-
-# Attach file if encoding was successful
-if encoded_attachment:
-    payload["attachment"] = [{
-        "content": encoded_attachment,
-        "name": "matched_jobs.txt"
-    }]
-
-try:
-    response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
-    if response.status_code == 201:
-        print("✅ Email sent successfully via Brevo API.")
-    else:
-        print("❌ Failed to send email:", response.status_code, response.text)
-except Exception as e:
-    print("❌ Exception occurred:", str(e))
+# Run the full script
+if __name__ == "__main__":
+    job_list = collect_all_jobs()
+    email_html = format_html(job_list)
+    send_email(email_html)
