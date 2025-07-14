@@ -26,4 +26,4 @@ jobs:
         env:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
-        run: python final_job_scraper.py
+        run: daily_job_mailer.py
