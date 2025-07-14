@@ -1,54 +1,57 @@
-
 import requests
 from bs4 import BeautifulSoup
 import os
 
 def fetch_jobs_stepstone():
+    print("🔎 Fetching from StepStone...")
     jobs = []
     url = "https://www.stepstone.de/jobs/mechatronics"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, "html.parser")
-        for link in soup.select("a[data-at=job-item-title]"):
+        for link in soup.select("a[data-at=job-item-title]")[:10]:
             title = link.text.strip()
             href = "https://www.stepstone.de" + link.get("href")
             jobs.append(f"{title} – StepStone\n{href}")
     except Exception as e:
-        jobs.append(f"StepStone error: {e}")
+        print("StepStone error:", e)
     return jobs
 
 def fetch_jobs_jobtensor():
+    print("🔎 Fetching from Jobtensor...")
     jobs = []
     url = "https://www.jobtensor.com/de/Mechatronik-Jobs"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, "html.parser")
-        for item in soup.select("a.position_title"):
+        for item in soup.select("a.position_title")[:10]:
             title = item.text.strip()
             href = "https://www.jobtensor.com" + item.get("href")
             jobs.append(f"{title} – Jobtensor\n{href}")
     except Exception as e:
-        jobs.append(f"Jobtensor error: {e}")
+        print("Jobtensor error:", e)
     return jobs
 
 def fetch_jobs_linkedin():
+    print("🔎 Fetching from LinkedIn...")
     jobs = []
     url = "https://www.linkedin.com/jobs/search?keywords=Mechatronics&location=Germany&f_TPR=r86400"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.text, "html.parser")
-        for link in soup.find_all("a", class_="base-card__full-link"):
+        for link in soup.find_all("a", class_="base-card__full-link")[:10]:
             title = link.get_text(strip=True)
             href = link.get("href")
             jobs.append(f"{title} – LinkedIn\n{href}")
     except Exception as e:
-        jobs.append(f"LinkedIn error: {e}")
+        print("LinkedIn error:", e)
     return jobs
 
 def send_email(job_list):
+    print("📧 Sending email...")
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
@@ -83,6 +86,7 @@ def send_email(job_list):
         print(f"❌ Failed to send email: {response.status_code} {response.text}")
 
 def main():
+    print("🚀 Starting job scrape...")
     job_list = []
     job_list += fetch_jobs_stepstone()
     job_list += fetch_jobs_jobtensor()
