@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import os
 
 def fetch_jobs_stepstone():
-    print("🔎 StepStone...")
+    print("🔎 Fetching from StepStone...")
     jobs = []
     url = "https://www.stepstone.de/jobs/mechatronik/in-deutschland"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -14,14 +14,13 @@ def fetch_jobs_stepstone():
         for link in soup.select("a[data-at=job-item-title]")[:10]:
             title = link.text.strip()
             href = "https://www.stepstone.de" + link.get("href")
-            if not any(x in title.lower() for x in ["ausbildung", "praktikum", "werkstudent"]):
-                jobs.append(f"{title} – StepStone\n{href}")
+            jobs.append(f"{title} – StepStone\n{href}")
     except Exception as e:
         print("StepStone error:", e)
     return jobs
 
 def fetch_jobs_jobtensor():
-    print("🔎 Jobtensor...")
+    print("🔎 Fetching from Jobtensor...")
     jobs = []
     url = "https://www.jobtensor.com/de/Mechatronik-Jobs"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -31,14 +30,13 @@ def fetch_jobs_jobtensor():
         for item in soup.select("a.position_title")[:10]:
             title = item.text.strip()
             href = "https://www.jobtensor.com" + item.get("href")
-            if not any(x in title.lower() for x in ["ausbildung", "praktikum", "werkstudent"]):
-                jobs.append(f"{title} – Jobtensor\n{href}")
+            jobs.append(f"{title} – Jobtensor\n{href}")
     except Exception as e:
         print("Jobtensor error:", e)
     return jobs
 
 def fetch_jobs_linkedin():
-    print("🔎 LinkedIn...")
+    print("🔎 Fetching from LinkedIn...")
     jobs = []
     url = "https://www.linkedin.com/jobs/search?keywords=Mechatronics&location=Germany&f_TPR=r86400&f_JT=F"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -48,8 +46,7 @@ def fetch_jobs_linkedin():
         for link in soup.find_all("a", class_="base-card__full-link")[:10]:
             title = link.get_text(strip=True)
             href = link.get("href")
-            if not any(x in title.lower() for x in ["ausbildung", "praktikum", "werkstudent"]):
-                jobs.append(f"{title} – LinkedIn\n{href}")
+            jobs.append(f"{title} – LinkedIn\n{href}")
     except Exception as e:
         print("LinkedIn error:", e)
     return jobs
@@ -68,13 +65,13 @@ def send_email(job_list):
     for job in job_list:
         if "http" in job:
             title, link = job.split("\n")
-            html_body += f"<li><strong>{title}</strong><br><a href='{link}'>Apply Now</a></li>"
+            html_body += f"<li><strong>{title}</strong><br><a href='{link}'>{link}</a></li>"
     html_body += "</ul>"
 
     data = {
         "sender": {"name": "Daily JobBot", "email": SENDER_EMAIL},
         "to": [{"email": RECEIVER_EMAIL}],
-        "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
+        "subject": "🔔 Daily Germany Job Alerts – Full-Time, Profile Matched",
         "htmlContent": html_body,
     }
 
@@ -87,10 +84,10 @@ def send_email(job_list):
     if response.status_code == 201:
         print("✅ Email sent successfully.")
     else:
-        print(f"❌ Email failed: {response.status_code} {response.text}")
+        print(f"❌ Failed to send email: {response.status_code} {response.text}")
 
 def main():
-    print("🚀 Starting scraper...")
+    print("🚀 Starting job scrape...")
     job_list = []
     job_list += fetch_jobs_stepstone()
     job_list += fetch_jobs_jobtensor()
