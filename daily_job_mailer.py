@@ -1,3 +1,4 @@
+
 import requests
 from bs4 import BeautifulSoup
 import os
@@ -5,7 +6,7 @@ import os
 def fetch_jobs_stepstone():
     print("🔎 Fetching from StepStone...")
     jobs = []
-    url = "https://www.stepstone.de/jobs/mechatronics"
+    url = "https://www.stepstone.de/jobs/mechatronik/in-deutschland"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         res = requests.get(url, headers=headers, timeout=10)
@@ -37,7 +38,7 @@ def fetch_jobs_jobtensor():
 def fetch_jobs_linkedin():
     print("🔎 Fetching from LinkedIn...")
     jobs = []
-    url = "https://www.linkedin.com/jobs/search?keywords=Mechatronics&location=Germany&f_TPR=r86400"
+    url = "https://www.linkedin.com/jobs/search?keywords=Mechatronics&location=Germany&f_TPR=r86400&f_JT=F"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         res = requests.get(url, headers=headers, timeout=10)
@@ -60,7 +61,7 @@ def send_email(job_list):
     RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
     SENDER_EMAIL = "jineelgandhi426@gmail.com"
 
-    html_body = "<h2>🔍 Matched Jobs – Germany</h2><ul>"
+    html_body = "<h2>🔍 Matched Jobs – Germany (Full-Time)</h2><ul>"
     for job in job_list:
         if "http" in job:
             title, link = job.split("\n")
@@ -70,7 +71,7 @@ def send_email(job_list):
     data = {
         "sender": {"name": "Daily JobBot", "email": SENDER_EMAIL},
         "to": [{"email": RECEIVER_EMAIL}],
-        "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
+        "subject": "🔔 Daily Germany Job Alerts – Full-Time, Profile Matched",
         "htmlContent": html_body,
     }
 
