@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 import os
 
 def fetch_jobs_stepstone():
-    print("🔎 StepStone...")
     jobs = []
     url = "https://www.stepstone.de/jobs/mechatronik/in-deutschland"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -21,7 +20,6 @@ def fetch_jobs_stepstone():
     return jobs
 
 def fetch_jobs_jobtensor():
-    print("🔎 Jobtensor...")
     jobs = []
     url = "https://www.jobtensor.com/de/Mechatronik-Jobs"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -38,7 +36,6 @@ def fetch_jobs_jobtensor():
     return jobs
 
 def fetch_jobs_linkedin():
-    print("🔎 LinkedIn...")
     jobs = []
     url = "https://www.linkedin.com/jobs/search?keywords=Mechatronics&location=Germany&f_TPR=r86400&f_JT=F"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -55,11 +52,6 @@ def fetch_jobs_linkedin():
     return jobs
 
 def send_email(job_list):
-    print("📧 Sending email...")
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-
     BREVO_API_KEY = os.getenv("BREVO_API_KEY")
     RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
     SENDER_EMAIL = "jineelgandhi426@gmail.com"
@@ -90,7 +82,6 @@ def send_email(job_list):
         print(f"❌ Email failed: {response.status_code} {response.text}")
 
 def main():
-    print("🚀 Starting scraper...")
     job_list = []
     job_list += fetch_jobs_stepstone()
     job_list += fetch_jobs_jobtensor()
