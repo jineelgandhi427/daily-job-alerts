@@ -13,23 +13,7 @@ KEYWORDS = ["mechatronics", "simulation", "r&d", "test engineer", "development",
 EXCLUDE = ["kfz", "ausbildung", "praktikum", "werkstudent", "techniker"]
 TARGET_COUNTRY = "Germany"
 
-# StepStone scraper (limited to English listings)
-def scrape_stepstone():
-    print("🔎 Scraping StepStone...")
-    url = "https://www.stepstone.de/en/jobs/mechatronics/"
-    resp = requests.get(url, timeout=10)
-    soup = BeautifulSoup(resp.text, "html.parser")
-    jobs = []
-
-    for a in soup.select("a[href^='/en/job/']"):
-        title = a.get_text(strip=True)
-        link = "https://www.stepstone.de" + a["href"]
-
-        if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
-            jobs.append((title, link))
-    return jobs
-
-# Jobtensor (simplified)
+# StepStone scraper (with timeout handling)
 def scrape_stepstone():
     print("🔎 Scraping StepStone...")
     url = "https://www.stepstone.de/en/jobs/mechatronics/"
@@ -49,23 +33,50 @@ def scrape_stepstone():
         print(f"⚠️ StepStone scrape failed: {e}")
     return jobs
 
-# Monster (basic search)
+# Jobtensor scraper
+def scrape_jobtensor():
+    print("🔎 Scraping Jobtensor...")
+    url = "https://www.jobtensor.com/Mechatronics-Jobs-Germany"
+    jobs = []
+
+    try:
+        resp = requests.get(url, timeout=15)
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        for div in soup.select("div.job-offer"):
+            a = div.find("a", href=True)
+            if not a:
+                continue
+            title = a.get_text(strip=True)
+            link = "https://www.jobtensor.com" + a["href"]
+
+            if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
+                jobs.append((title, link))
+    except Exception as e:
+        print(f"⚠️ Jobtensor scrape failed: {e}")
+    return jobs
+
+# Monster scraper
 def scrape_monster():
     print("🔎 Scraping Monster...")
     url = "https://www.monster.de/jobs/suche?q=mechatronik&where=Deutschland"
-    resp = requests.get(url, timeout=10)
-    soup = BeautifulSoup(resp.text, "html.parser")
     jobs = []
 
-    for a in soup.select("a.card-link"):
-        title = a.get_text(strip=True)
-        link = a["href"]
+    try:
+        resp = requests.get(url, timeout=15)
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
-            jobs.append((title, link))
+        for a in soup.select("a.card-link"):
+            title = a.get_text(strip=True)
+            link = a["href"]
+
+            if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
+                jobs.append((title, link))
+    except Exception as e:
+        print(f"⚠️ Monster scrape failed: {e}")
     return jobs
 
-# Format email body (HTML)
+# Format email body
 def format_email(jobs_by_source):
     html = "<h2>🔍 Matched Jobs – Germany (Full-Time)</h2><ul>"
     for source, jobs in jobs_by_source.items():
@@ -77,7 +88,7 @@ def format_email(jobs_by_source):
     html += "</ul><p>This is an automated job alert based on your Mechatronics profile.</p>"
     return html
 
-# Send email using Brevo API
+# Send email via Brevo
 def send_email(subject, html_content):
     api_key = os.getenv("BREVO_API_KEY")
     receiver = os.getenv("RECEIVER_EMAIL")
