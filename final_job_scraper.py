@@ -30,22 +30,23 @@ def scrape_stepstone():
     return jobs
 
 # Jobtensor (simplified)
-def scrape_jobtensor():
-    print("🔎 Scraping Jobtensor...")
-    url = "https://www.jobtensor.com/Mechatronics-Jobs-Germany"
-    resp = requests.get(url, timeout=10)
-    soup = BeautifulSoup(resp.text, "html.parser")
+def scrape_stepstone():
+    print("🔎 Scraping StepStone...")
+    url = "https://www.stepstone.de/en/jobs/mechatronics/"
     jobs = []
 
-    for div in soup.select("div.job-offer"):
-        title_tag = div.find("a", href=True)
-        if not title_tag:
-            continue
-        title = title_tag.get_text(strip=True)
-        link = "https://www.jobtensor.com" + title_tag["href"]
+    try:
+        resp = requests.get(url, timeout=20)
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
-            jobs.append((title, link))
+        for a in soup.select("a[href^='/en/job/']"):
+            title = a.get_text(strip=True)
+            link = "https://www.stepstone.de" + a["href"]
+
+            if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
+                jobs.append((title, link))
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ StepStone scrape failed: {e}")
     return jobs
 
 # Monster (basic search)
