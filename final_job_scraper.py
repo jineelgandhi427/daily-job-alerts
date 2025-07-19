@@ -1,96 +1,118 @@
+# full_job_scraper.py
 
 import requests
 from bs4 import BeautifulSoup
+import re
 import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
 
-def fetch_jobs_stepstone():
+# --- CONFIG ---
+KEYWORDS = ["mechatronics", "simulation", "r&d", "test engineer", "development", "automation"]
+EXCLUDE = ["kfz", "ausbildung", "praktikum", "werkstudent", "techniker"]
+TARGET_COUNTRY = "Germany"
+
+# StepStone scraper (limited to English listings)
+def scrape_stepstone():
+    print("🔎 Scraping StepStone...")
+    url = "https://www.stepstone.de/en/jobs/mechatronics/"
+    resp = requests.get(url, timeout=10)
+    soup = BeautifulSoup(resp.text, "html.parser")
     jobs = []
-    url = "https://www.stepstone.de/jobs/mechatronik/in-deutschland"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        for link in soup.select("a[data-at=job-item-title]")[:10]:
-            title = link.text.strip()
-            href = "https://www.stepstone.de" + link.get("href")
-            if not any(x in title.lower() for x in ["ausbildung", "praktikum", "werkstudent"]):
-                jobs.append(f"{title} – StepStone\n{href}")
-    except Exception as e:
-        print("StepStone error:", e)
+
+    for a in soup.select("a[href^='/en/job/']"):
+        title = a.get_text(strip=True)
+        link = "https://www.stepstone.de" + a["href"]
+
+        if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
+            jobs.append((title, link))
     return jobs
 
-def fetch_jobs_jobtensor():
+# Jobtensor (simplified)
+def scrape_jobtensor():
+    print("🔎 Scraping Jobtensor...")
+    url = "https://www.jobtensor.com/Mechatronics-Jobs-Germany"
+    resp = requests.get(url, timeout=10)
+    soup = BeautifulSoup(resp.text, "html.parser")
     jobs = []
-    url = "https://www.jobtensor.com/de/Mechatronik-Jobs"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        for item in soup.select("a.position_title")[:10]:
-            title = item.text.strip()
-            href = "https://www.jobtensor.com" + item.get("href")
-            if not any(x in title.lower() for x in ["ausbildung", "praktikum", "werkstudent"]):
-                jobs.append(f"{title} – Jobtensor\n{href}")
-    except Exception as e:
-        print("Jobtensor error:", e)
+
+    for div in soup.select("div.job-offer"):
+        title_tag = div.find("a", href=True)
+        if not title_tag:
+            continue
+        title = title_tag.get_text(strip=True)
+        link = "https://www.jobtensor.com" + title_tag["href"]
+
+        if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
+            jobs.append((title, link))
     return jobs
 
-def fetch_jobs_linkedin():
+# Monster (basic search)
+def scrape_monster():
+    print("🔎 Scraping Monster...")
+    url = "https://www.monster.de/jobs/suche?q=mechatronik&where=Deutschland"
+    resp = requests.get(url, timeout=10)
+    soup = BeautifulSoup(resp.text, "html.parser")
     jobs = []
-    url = "https://www.linkedin.com/jobs/search?keywords=Mechatronics&location=Germany&f_TPR=r86400&f_JT=F"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        for link in soup.find_all("a", class_="base-card__full-link")[:10]:
-            title = link.get_text(strip=True)
-            href = link.get("href")
-            if not any(x in title.lower() for x in ["ausbildung", "praktikum", "werkstudent"]):
-                jobs.append(f"{title} – LinkedIn\n{href}")
-    except Exception as e:
-        print("LinkedIn error:", e)
+
+    for a in soup.select("a.card-link"):
+        title = a.get_text(strip=True)
+        link = a["href"]
+
+        if any(k in title.lower() for k in KEYWORDS) and not any(x in title.lower() for x in EXCLUDE):
+            jobs.append((title, link))
     return jobs
 
-def send_email(job_list):
-    BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-    RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
-    SENDER_EMAIL = "jineelgandhi426@gmail.com"
+# Format email body (HTML)
+def format_email(jobs_by_source):
+    html = "<h2>🔍 Matched Jobs – Germany (Full-Time)</h2><ul>"
+    for source, jobs in jobs_by_source.items():
+        if not jobs:
+            continue
+        html += f"<h3>{source}</h3>"
+        for title, link in jobs:
+            html += f"<li><a href='{link}'>{title}</a></li>"
+    html += "</ul><p>This is an automated job alert based on your Mechatronics profile.</p>"
+    return html
 
-    html_body = "<h2>🔍 Matched Jobs – Germany (Full-Time)</h2><ul>"
-    for job in job_list:
-        if "http" in job:
-            title, link = job.split("\n")
-            html_body += f"<li><strong>{title}</strong><br><a href='{link}'>Apply Now</a></li>"
-    html_body += "</ul>"
+# Send email using Brevo API
+def send_email(subject, html_content):
+    api_key = os.getenv("BREVO_API_KEY")
+    receiver = os.getenv("RECEIVER_EMAIL")
 
-    data = {
-        "sender": {"name": "Daily JobBot", "email": SENDER_EMAIL},
-        "to": [{"email": RECEIVER_EMAIL}],
-        "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
-        "htmlContent": html_body,
+    url = "https://api.brevo.com/v3/smtp/email"
+    payload = {
+        "sender": {"name": "Daily JobBot", "email": "daily@jobbot.ai"},
+        "to": [{"email": receiver}],
+        "subject": subject,
+        "htmlContent": html_content
+    }
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
     }
 
-    response = requests.post(
-        "https://api.brevo.com/v3/smtp/email",
-        headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json"},
-        json=data
-    )
-
-    if response.status_code == 201:
+    res = requests.post(url, json=payload, headers=headers)
+    if res.status_code == 201:
         print("✅ Email sent successfully.")
     else:
-        print(f"❌ Email failed: {response.status_code} {response.text}")
+        print(f"❌ Failed to send email: {res.status_code}", res.text)
 
-def main():
-    job_list = []
-    job_list += fetch_jobs_stepstone()
-    job_list += fetch_jobs_jobtensor()
-    job_list += fetch_jobs_linkedin()
+# Run all scrapers
+def run():
+    all_jobs = {
+        "StepStone": scrape_stepstone(),
+        "Jobtensor": scrape_jobtensor(),
+        "Monster": scrape_monster()
+    }
 
-    if any("http" in j for j in job_list):
-        send_email(job_list)
-    else:
-        send_email(["No matching jobs found today."])
+    total = sum(len(jobs) for jobs in all_jobs.values())
+    print(f"\n✅ Found {total} matching jobs across all platforms.\n")
+
+    html = format_email(all_jobs)
+    send_email("🔔 Daily Germany Job Alerts – Profile Matched", html)
 
 if __name__ == "__main__":
-    main()
+    run()
