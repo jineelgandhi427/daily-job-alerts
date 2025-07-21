@@ -85,38 +85,38 @@ def scrape_linkedin():
 
 # ---------------- EMAIL ---------------- #
 
-def format_email(jobs_by_board):
-    html = "<h2>🔍 Matched Jobs – Germany (Full-Time)</h2>"
-    total = 0
-    for board, jobs in jobs_by_board.items():
+def format_email(jobs_by_source):
+    html = "<h2>🔍 Matched Jobs – Germany (Full-Time)</h2><ul>"
+    for source, jobs in jobs_by_source.items():
         if not jobs:
             continue
-        html += f"<h3>{board}</h3><ul>"
+        html += f"<h3>{source}</h3>"
         for title, link in jobs:
             html += f"<li><a href='{link}'>{title}</a></li>"
-        html += "</ul>"
-        total += len(jobs)
-    html += f"<p><strong>Total: {total} jobs found.</strong></p>"
-    html += "<p>– Automated JobBot</p>"
+    html += "</ul><p>This is an automated message.</p>"
     return html
 
-def send_email(html_content):
-    print("📤 Sending email via Brevo...")
-    url = "https://api.brevo.com/v3/smtp/email"
+def send_email(subject, html_content):
     api_key = os.getenv("BREVO_API_KEY")
     receiver = os.getenv("RECEIVER_EMAIL")
+
+    url = "https://api.brevo.com/v3/smtp/email"
     payload = {
         "sender": {"name": "Daily JobBot", "email": "daily@jobbot.ai"},
         "to": [{"email": receiver}],
-        "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
-        "htmlContent": html_content
+        "subject": subject,
+        "htmlContent": html_content or "<p>No jobs found today.</p>"  # fallback
     }
     headers = {
         "accept": "application/json",
         "api-key": api_key,
         "content-type": "application/json"
     }
+
     res = requests.post(url, json=payload, headers=headers)
+    print("📤 Brevo response:", res.status_code)
+    print(res.text)
+
     if res.status_code == 201:
         print("✅ Email sent.")
     else:
