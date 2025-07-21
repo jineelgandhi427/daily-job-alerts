@@ -36,7 +36,8 @@ def scrape_stepstone():
                 jobs.append((title.title(), link))
     except Exception as e:
         print(f"❌ StepStone failed: {e}")
-    return jobs
+    return jobsprint(f"Found job: {title}")
+
 
 def scrape_monster():
     print("🔎 Monster")
@@ -53,6 +54,8 @@ def scrape_monster():
     except Exception as e:
         print(f"❌ Monster failed: {e}")
     return jobs
+    print(f"Found job: {title}")
+
 
 def scrape_jobtensor():
     print("🔎 Jobtensor")
@@ -69,6 +72,8 @@ def scrape_jobtensor():
     except Exception as e:
         print(f"❌ Jobtensor failed: {e}")
     return jobs
+    print(f"Found job: {title}")
+
 
 def scrape_linkedin():
     print("🔎 LinkedIn (filtered public)")
@@ -80,6 +85,8 @@ def scrape_linkedin():
     for url in urls:
         jobs.append(("LinkedIn – Mechatronics/Simulation", url))
     return jobs
+    print(f"Found job: {title}")
+
 
 # (Optional future scrapers would follow same pattern)
 
@@ -136,6 +143,8 @@ def run():
 
     html = format_email(job_data)
     send_email("🔔 Daily Germany Job Alerts – Profile Matched", html)
+    for source, jobs in job_data.items():
+    print(f"📊 {source}: {len(jobs)} jobs")
 
 if __name__ == "__main__":
     run()
