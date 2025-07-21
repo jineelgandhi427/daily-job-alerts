@@ -135,7 +135,7 @@ def run():
     }
 
     html = format_email(job_data)
-    send_email(html)
+    send_email("🔔 Daily Germany Job Alerts – Profile Matched", html)
 
 if __name__ == "__main__":
     run()
