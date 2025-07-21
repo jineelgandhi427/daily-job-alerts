@@ -2,12 +2,7 @@
 
 import requests
 from bs4 import BeautifulSoup
-import re
 import os
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import smtplib
-import time
 
 # ---------------- CONFIG ---------------- #
 KEYWORDS = [
@@ -34,10 +29,10 @@ def scrape_stepstone():
             link = "https://www.stepstone.de" + a["href"]
             if any(k in title for k in KEYWORDS) and not any(x in title for x in EXCLUDE):
                 jobs.append((title.title(), link))
+                print(f"Found: {title.title()}")
     except Exception as e:
         print(f"❌ StepStone failed: {e}")
-    return jobsprint(f"Found job: {title}")
-
+    return jobs
 
 def scrape_monster():
     print("🔎 Monster")
@@ -51,11 +46,10 @@ def scrape_monster():
             link = a["href"]
             if any(k in title for k in KEYWORDS) and not any(x in title for x in EXCLUDE):
                 jobs.append((title.title(), link))
+                print(f"Found: {title.title()}")
     except Exception as e:
         print(f"❌ Monster failed: {e}")
     return jobs
-    print(f"Found job: {title}")
-
 
 def scrape_jobtensor():
     print("🔎 Jobtensor")
@@ -69,11 +63,10 @@ def scrape_jobtensor():
             link = "https://www.jobtensor.com" + a.get("href")
             if any(k in title for k in KEYWORDS) and not any(x in title for x in EXCLUDE):
                 jobs.append((title.title(), link))
+                print(f"Found: {title.title()}")
     except Exception as e:
         print(f"❌ Jobtensor failed: {e}")
     return jobs
-    print(f"Found job: {title}")
-
 
 def scrape_linkedin():
     print("🔎 LinkedIn (filtered public)")
@@ -85,10 +78,6 @@ def scrape_linkedin():
     for url in urls:
         jobs.append(("LinkedIn – Mechatronics/Simulation", url))
     return jobs
-    print(f"Found job: {title}")
-
-
-# (Optional future scrapers would follow same pattern)
 
 # ---------------- EMAIL ---------------- #
 
@@ -104,6 +93,7 @@ def format_email(jobs_by_source):
     return html
 
 def send_email(subject, html_content):
+    import json
     api_key = os.getenv("BREVO_API_KEY")
     receiver = os.getenv("RECEIVER_EMAIL")
 
@@ -112,7 +102,7 @@ def send_email(subject, html_content):
         "sender": {"name": "Daily JobBot", "email": "jineelgandhi426@gmail.com"},
         "to": [{"email": receiver}],
         "subject": subject,
-        "htmlContent": html_content or "<p>No jobs found today.</p>"  # fallback
+        "htmlContent": html_content or "<p>No jobs found today.</p>"
     }
     headers = {
         "accept": "application/json",
@@ -143,9 +133,9 @@ def run():
 
     html = format_email(job_data)
     send_email("🔔 Daily Germany Job Alerts – Profile Matched", html)
+
     for source, jobs in job_data.items():
-    print(f"📊 {source}: {len(jobs)} jobs")
+        print(f"📊 {source}: {len(jobs)} jobs")
 
 if __name__ == "__main__":
     run()
-
