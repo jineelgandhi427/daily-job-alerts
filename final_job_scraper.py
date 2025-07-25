@@ -124,7 +124,7 @@ def send_email(subject, html_content):
     receiver = os.getenv("RECEIVER_EMAIL")
     url = "https://api.brevo.com/v3/smtp/email"
     payload = {
-        "sender": {"name": "Daily JobBot", "email": "daily@jobbot.ai"},
+        "sender": {"name": "Daily JobBot", "email": "jineelgandhi426@gmail.com"},
         "to": [{"email": receiver}],
         "subject": subject,
         "htmlContent": html_content or "<p>No jobs found today.</p>"
