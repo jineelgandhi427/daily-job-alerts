@@ -87,7 +87,7 @@ def send_email(html):
     url = "https://api.brevo.com/v3/smtp/email"
     payload = {
         "sender": {"name": "Daily JobBot", "email": SENDER_EMAIL},
-        "to": [{"email": EMAIL_TO}],
+        "to": [{"email": "jineelgandhi426@gmail.com"}],
         "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
         "htmlContent": html
     }
