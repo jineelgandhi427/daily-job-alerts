@@ -16,7 +16,7 @@ HEADLESS = True
 
 EMAIL_TO = os.getenv("RECEIVER_EMAIL")
 BREVO_KEY = os.getenv("BREVO_API_KEY")
-SENDER_EMAIL = "daily@jobbot.ai"
+SENDER_EMAIL = "jineelgandhi426@gmail.com"
 
 # -------------------- SCRAPERS -------------------- #
 
@@ -87,7 +87,7 @@ def send_email(html):
     url = "https://api.brevo.com/v3/smtp/email"
     payload = {
         "sender": {"name": "Daily JobBot", "email": SENDER_EMAIL},
-        "to": [{"email": "jineelgandhi426@gmail.com"}],
+        "to": [{"email": EMAIL_TO}],
         "subject": "🔔 Daily Germany Job Alerts – Profile Matched",
         "htmlContent": html
     }
