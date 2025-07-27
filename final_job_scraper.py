@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import requests
 import os
 import time
-import tempfile
+import tempfile  # For unique Chrome profile directories
 
 # -------------------- CONFIG -------------------- #
 KEYWORDS = [
@@ -40,12 +40,12 @@ def start_browser():
         options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    
-    # Create a temporary user data directory to avoid conflicts
+
+    # Prevent Chrome user data conflicts
     user_data_dir = tempfile.mkdtemp()
     options.add_argument(f"--user-data-dir={user_data_dir}")
 
-    return webdriver.Chrome(options=options))
+    return webdriver.Chrome(options=options)
 
 # -------------------- SCRAPERS -------------------- #
 def scrape_stepstone(driver):
