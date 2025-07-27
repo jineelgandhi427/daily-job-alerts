@@ -1,4 +1,4 @@
-# advanced_job_scraper.py
+# advanced_job_scraper_debug.py
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -22,13 +22,16 @@ EXCLUDE = [
 
 EMAIL_TO = os.getenv("RECEIVER_EMAIL")
 BREVO_KEY = os.getenv("BREVO_API_KEY")
-SENDER_EMAIL = "jineelgandhi426@gmail.com"
-HEADLESS = True
+SENDER_EMAIL = "daily@jobbot.ai"
+HEADLESS = False  # Set to False for debugging
 
 # -------------------- HELPERS -------------------- #
 def filter_job(title, description=""):
     combined = (title + " " + description).lower()
-    return any(k in combined for k in KEYWORDS) and not any(e in combined for e in EXCLUDE)
+    is_match = any(k in combined for k in KEYWORDS) and not any(e in combined for e in EXCLUDE)
+    if not is_match:
+        print(f"❌ Excluded: {title}")
+    return is_match
 
 def start_browser():
     options = Options()
@@ -46,6 +49,8 @@ def scrape_stepstone(driver):
         driver.get("https://www.stepstone.de/en/jobs/mechatronics/")
         time.sleep(5)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        with open("StepStone_debug.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
         for a in soup.select("a[href^='/en/job/']"):
             title = a.get_text(strip=True)
             link = "https://www.stepstone.de" + a["href"]
@@ -62,6 +67,8 @@ def scrape_monster():
         url = "https://www.monster.de/jobs/suche?q=mechatronik&where=Deutschland"
         resp = requests.get(url, timeout=30)
         soup = BeautifulSoup(resp.text, "html.parser")
+        with open("Monster_debug.html", "w", encoding="utf-8") as f:
+            f.write(resp.text)
         for a in soup.select("a.card-link"):
             title = a.get_text(strip=True)
             link = a["href"]
@@ -78,6 +85,8 @@ def scrape_jobtensor():
         url = "https://www.jobtensor.com/Mechatronics-Jobs-Germany"
         resp = requests.get(url, timeout=30)
         soup = BeautifulSoup(resp.text, "html.parser")
+        with open("Jobtensor_debug.html", "w", encoding="utf-8") as f:
+            f.write(resp.text)
         for a in soup.select("a.card-title"):
             title = a.get_text(strip=True)
             link = "https://www.jobtensor.com" + a["href"]
@@ -94,6 +103,8 @@ def scrape_bundesagentur(driver):
         driver.get("https://jobboerse.arbeitsagentur.de/vamJB/startseite.html")
         time.sleep(6)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        with open("Bundesagentur_debug.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
         for link in soup.find_all("a", href=True):
             text = link.get_text(strip=True)
             if filter_job(text) and "jobdetails" in link["href"]:
@@ -103,7 +114,7 @@ def scrape_bundesagentur(driver):
     return jobs
 
 def scrape_linkedin():
-    print("🔎 LinkedIn (Premium Filtered URLs)")
+    print("🔎 LinkedIn (Static URLs Only)")
     return [
         ("LinkedIn – Mechatronics", "https://www.linkedin.com/jobs/search/?keywords=Mechatronics&location=Germany&f_TP=1&sortBy=DD"),
         ("LinkedIn – Simulation", "https://www.linkedin.com/jobs/search/?keywords=Simulation&location=Germany&f_TP=1&sortBy=DD")
@@ -116,6 +127,8 @@ def scrape_xing(driver):
         driver.get("https://www.xing.com/jobs/search?keywords=mechatronik&location=Germany")
         time.sleep(5)
         soup = BeautifulSoup(driver.page_source, "html.parser")
+        with open("Xing_debug.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
         for a in soup.select("a[href*='/jobs/']"):
             title = a.get_text(strip=True)
             link = a["href"]
