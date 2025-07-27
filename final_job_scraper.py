@@ -23,7 +23,7 @@ EXCLUDE = [
 
 EMAIL_TO = os.getenv("RECEIVER_EMAIL")
 BREVO_KEY = os.getenv("BREVO_API_KEY")
-SENDER_EMAIL = "jineelgandhi426@gmail.com"
+SENDER_EMAIL = "jineelgandhi426@gmil.com"
 HEADLESS = False  # Set to False for debugging
 
 # -------------------- HELPERS -------------------- #
@@ -37,14 +37,12 @@ def filter_job(title, description=""):
 def start_browser():
     options = Options()
     if HEADLESS:
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")  # Use new headless mode
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-
-    # Prevent Chrome user data conflicts
-    user_data_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={user_data_dir}")
-
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--window-size=1920,1080")
     return webdriver.Chrome(options=options)
 
 # -------------------- SCRAPERS -------------------- #
@@ -204,3 +202,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+
