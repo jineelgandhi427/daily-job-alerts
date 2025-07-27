@@ -4,6 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+import chromedriver_autoinstaller
 from bs4 import BeautifulSoup
 import requests
 import os
@@ -23,7 +24,7 @@ EXCLUDE = [
 
 EMAIL_TO = os.getenv("RECEIVER_EMAIL")
 BREVO_KEY = os.getenv("BREVO_API_KEY")
-SENDER_EMAIL = "daily@jobbot.ai"
+SENDER_EMAIL = "jineelgandhi426@gmail.com"
 HEADLESS = False  # Set to False for debugging
 
 # -------------------- HELPERS -------------------- #
@@ -35,18 +36,22 @@ def filter_job(title, description=""):
     return is_match
 
 def start_browser():
+    chromedriver_autoinstaller.install()  # Automatically downloads the right chromedriver
+    
     options = Options()
     if HEADLESS:
         options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--window-size=1920,1080")
-
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    
+    # Use Chromium installed via apt
     options.binary_location = "/usr/bin/chromium-browser"
-    service = Service("/usr/bin/chromedriver")
-    return webdriver.Chrome(service=service, options=options)
+    
+    return webdriver.Chrome(options=options)
+    
 
 # -------------------- SCRAPERS -------------------- #
 def scrape_stepstone(driver):
