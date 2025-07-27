@@ -1,14 +1,10 @@
-# advanced_job_scraper_debug.py
+# final_job_scraper.py
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
+import chromedriver_autoinstaller
 import requests
-import subprocess
-import zipfile
-import shutil
 import os
 import time
 
@@ -27,51 +23,15 @@ EXCLUDE = [
 EMAIL_TO = os.getenv("RECEIVER_EMAIL")
 BREVO_KEY = os.getenv("BREVO_API_KEY")
 SENDER_EMAIL = "daily@jobbot.ai"
-HEADLESS = True  # Set to True for GitHub Actions
+HEADLESS = True
 
 # -------------------- HELPERS -------------------- #
 def filter_job(title, description=""):
     combined = (title + " " + description).lower()
-    is_match = any(k in combined for k in KEYWORDS) and not any(e in combined for e in EXCLUDE)
-    if not is_match:
-        print(f"❌ Excluded: {title}")
-    return is_match
+    return any(k in combined for k in KEYWORDS) and not any(e in combined for e in EXCLUDE)
 
 def start_browser():
-    # Get full Chrome version
-    chrome_version_output = subprocess.check_output(["google-chrome", "--version"]).decode().strip()
-    full_version = chrome_version_output.split()[-1]
-    major_version = full_version.split(".")[0]
-
-    # Download ChromeDriver matching full version fallback if LATEST_RELEASE_{major} fails
-    driver_url = f"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{major_version}"
-    response = requests.get(driver_url)
-
-    if response.status_code != 200:
-        # fallback to full version
-        fallback_url = f"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{full_version}"
-        response = requests.get(fallback_url)
-        if response.status_code != 200:
-            raise Exception(f"Could not find compatible ChromeDriver for version {full_version}")
-
-    latest_driver_version = response.text.strip()
-    download_url = f"https://chromedriver.storage.googleapis.com/{latest_driver_version}/chromedriver_linux64.zip"
-    zip_response = requests.get(download_url)
-    if zip_response.status_code != 200:
-        raise Exception(f"Failed to download chromedriver zip: {zip_response.status_code}")
-
-    with open("chromedriver.zip", "wb") as f:
-        f.write(zip_response.content)
-
-    try:
-        with zipfile.ZipFile("chromedriver.zip", "r") as zip_ref:
-            zip_ref.extractall(".")
-    except zipfile.BadZipFile:
-        raise Exception("Downloaded chromedriver.zip is not a valid zip file")
-
-    shutil.move("chromedriver", "/usr/local/bin/chromedriver")
-    os.chmod("/usr/local/bin/chromedriver", 0o755)
-
+    chromedriver_autoinstaller.install()
     options = Options()
     if HEADLESS:
         options.add_argument("--headless")
@@ -80,11 +40,7 @@ def start_browser():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.binary_location = "/usr/bin/google-chrome"
-    service = Service("/usr/local/bin/chromedriver")
-
-    return webdriver.Chrome(service=service, options=options)
-    
+    return webdriver.Chrome(options=options)
 
 # -------------------- SCRAPERS -------------------- #
 def scrape_stepstone(driver):
@@ -94,8 +50,6 @@ def scrape_stepstone(driver):
         driver.get("https://www.stepstone.de/en/jobs/mechatronics/")
         time.sleep(5)
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        with open("StepStone_debug.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
         for a in soup.select("a[href^='/en/job/']"):
             title = a.get_text(strip=True)
             link = "https://www.stepstone.de" + a["href"]
@@ -105,85 +59,12 @@ def scrape_stepstone(driver):
         print("❌ StepStone error:", e)
     return jobs
 
-def scrape_monster():
-    print("🔎 Monster")
-    jobs = []
-    try:
-        url = "https://www.monster.de/jobs/suche?q=mechatronik&where=Deutschland"
-        resp = requests.get(url, timeout=30)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        with open("Monster_debug.html", "w", encoding="utf-8") as f:
-            f.write(resp.text)
-        for a in soup.select("a.card-link"):
-            title = a.get_text(strip=True)
-            link = a["href"]
-            if filter_job(title):
-                jobs.append((title, link))
-    except Exception as e:
-        print("❌ Monster error:", e)
-    return jobs
-
-def scrape_jobtensor():
-    print("🔎 Jobtensor")
-    jobs = []
-    try:
-        url = "https://www.jobtensor.com/Mechatronics-Jobs-Germany"
-        resp = requests.get(url, timeout=30)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        with open("Jobtensor_debug.html", "w", encoding="utf-8") as f:
-            f.write(resp.text)
-        for a in soup.select("a.card-title"):
-            title = a.get_text(strip=True)
-            link = "https://www.jobtensor.com" + a["href"]
-            if filter_job(title):
-                jobs.append((title, link))
-    except Exception as e:
-        print("❌ Jobtensor error:", e)
-    return jobs
-
-def scrape_bundesagentur(driver):
-    print("🔎 Bundesagentur")
-    jobs = []
-    try:
-        driver.get("https://jobboerse.arbeitsagentur.de/vamJB/startseite.html")
-        time.sleep(6)
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        with open("Bundesagentur_debug.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-        for link in soup.find_all("a", href=True):
-            text = link.get_text(strip=True)
-            if filter_job(text) and "jobdetails" in link["href"]:
-                jobs.append((text, "https://jobboerse.arbeitsagentur.de" + link["href"]))
-    except Exception as e:
-        print("❌ Bundesagentur error:", e)
-    return jobs
-
 def scrape_linkedin():
     print("🔎 LinkedIn (Static URLs Only)")
     return [
         ("LinkedIn – Mechatronics", "https://www.linkedin.com/jobs/search/?keywords=Mechatronics&location=Germany&f_TP=1&sortBy=DD"),
         ("LinkedIn – Simulation", "https://www.linkedin.com/jobs/search/?keywords=Simulation&location=Germany&f_TP=1&sortBy=DD")
     ]
-
-def scrape_xing(driver):
-    print("🔎 Xing")
-    jobs = []
-    try:
-        driver.get("https://www.xing.com/jobs/search?keywords=mechatronik&location=Germany")
-        time.sleep(5)
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        with open("Xing_debug.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-        for a in soup.select("a[href*='/jobs/']"):
-            title = a.get_text(strip=True)
-            link = a["href"]
-            if link.startswith("/jobs/"):
-                link = "https://www.xing.com" + link
-            if filter_job(title):
-                jobs.append((title, link))
-    except Exception as e:
-        print("❌ Xing error:", e)
-    return jobs
 
 # -------------------- EMAIL -------------------- #
 def format_email(data):
@@ -218,24 +99,13 @@ def send_email(html):
 
 # -------------------- MAIN -------------------- #
 def run():
-    print("🚀 Running full job scraper...")
+    print("🚀 Running fixed job scraper...")
     driver = start_browser()
 
     data = {
         "StepStone": scrape_stepstone(driver),
-        "Monster": scrape_monster(),
-        "Jobtensor": scrape_jobtensor(),
-        "LinkedIn": scrape_linkedin(),
-        "Bundesagentur": scrape_bundesagentur(driver),
-        "Xing": scrape_xing(driver)
+        "LinkedIn": scrape_linkedin()
     }
-
-    with open("job_log.txt", "w", encoding="utf-8") as f:
-        for site, jobs in data.items():
-            f.write(f"{site}:\n")
-            for title, link in jobs:
-                f.write(f"{title} – {link}\n")
-            f.write("\n")
 
     driver.quit()
     html = format_email(data)
@@ -243,5 +113,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
-
