@@ -47,11 +47,18 @@ def start_browser():
     latest_driver_version = requests.get(driver_url).text.strip()
 
     download_url = f"https://chromedriver.storage.googleapis.com/{latest_driver_version}/chromedriver_linux64.zip"
-    with open("chromedriver.zip", "wb") as f:
-        f.write(requests.get(download_url).content)
+    response = requests.get(download_url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to download chromedriver zip: {response.status_code}")
 
-    with zipfile.ZipFile("chromedriver.zip", "r") as zip_ref:
-        zip_ref.extractall(".")
+    with open("chromedriver.zip", "wb") as f:
+        f.write(response.content)
+
+    try:
+        with zipfile.ZipFile("chromedriver.zip", "r") as zip_ref:
+            zip_ref.extractall(".")
+    except zipfile.BadZipFile:
+        raise Exception("Downloaded chromedriver.zip is not a valid zip file")
 
     shutil.move("chromedriver", "/usr/local/bin/chromedriver")
     os.chmod("/usr/local/bin/chromedriver", 0o755)
