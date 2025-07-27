@@ -22,7 +22,7 @@ EXCLUDE = [
 
 EMAIL_TO = os.getenv("RECEIVER_EMAIL")
 BREVO_KEY = os.getenv("BREVO_API_KEY")
-SENDER_EMAIL = "daily@jobbot.ai"
+SENDER_EMAIL = "jineelgandhi426@gmail.com"
 HEADLESS = False  # Set to False for debugging
 
 # -------------------- HELPERS -------------------- #
