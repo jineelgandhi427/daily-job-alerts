@@ -36,19 +36,20 @@ def filter_job(title, description=""):
     return is_match
 
 def start_browser():
-    chromedriver_autoinstaller.install()  # Automatically handles the right driver
-
     options = Options()
     if HEADLESS:
-        options.add_argument("--headless=new")
+        options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
 
-    options.binary_location = "/usr/bin/chromium-browser"
-    return webdriver.Chrome(options=options)
+    # Google Chrome default install path
+    options.binary_location = "/usr/bin/google-chrome"
+    service = Service("/usr/bin/chromedriver")
+
+    return webdriver.Chrome(service=service, options=options)
     
 
 # -------------------- SCRAPERS -------------------- #
