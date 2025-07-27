@@ -38,21 +38,30 @@ def filter_job(title, description=""):
     return is_match
 
 def start_browser():
-    # Get Chrome version
-    chrome_version = subprocess.check_output(["google-chrome", "--version"]).decode().split()[2]
-    major_version = chrome_version.split(".")[0]
+    # Get full Chrome version
+    chrome_version_output = subprocess.check_output(["google-chrome", "--version"]).decode().strip()
+    full_version = chrome_version_output.split()[-1]
+    major_version = full_version.split(".")[0]
 
-    # Download correct ChromeDriver version
+    # Download ChromeDriver matching full version fallback if LATEST_RELEASE_{major} fails
     driver_url = f"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{major_version}"
-    latest_driver_version = requests.get(driver_url).text.strip()
+    response = requests.get(driver_url)
 
-    download_url = f"https://chromedriver.storage.googleapis.com/{latest_driver_version}/chromedriver_linux64.zip"
-    response = requests.get(download_url)
     if response.status_code != 200:
-        raise Exception(f"Failed to download chromedriver zip: {response.status_code}")
+        # fallback to full version
+        fallback_url = f"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{full_version}"
+        response = requests.get(fallback_url)
+        if response.status_code != 200:
+            raise Exception(f"Could not find compatible ChromeDriver for version {full_version}")
+
+    latest_driver_version = response.text.strip()
+    download_url = f"https://chromedriver.storage.googleapis.com/{latest_driver_version}/chromedriver_linux64.zip"
+    zip_response = requests.get(download_url)
+    if zip_response.status_code != 200:
+        raise Exception(f"Failed to download chromedriver zip: {zip_response.status_code}")
 
     with open("chromedriver.zip", "wb") as f:
-        f.write(response.content)
+        f.write(zip_response.content)
 
     try:
         with zipfile.ZipFile("chromedriver.zip", "r") as zip_ref:
