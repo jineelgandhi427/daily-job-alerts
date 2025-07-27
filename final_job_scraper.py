@@ -9,6 +9,9 @@ import requests
 import os
 import time
 import chromedriver_autoinstaller  # NEW
+import subprocess
+import zipfile
+import shutil
 
 # -------------------- CONFIG -------------------- #
 KEYWORDS = [
@@ -36,6 +39,25 @@ def filter_job(title, description=""):
     return is_match
 
 def start_browser():
+    # Get Chrome version
+    chrome_version = subprocess.check_output(["google-chrome", "--version"]).decode().split()[2]
+    major_version = chrome_version.split(".")[0]
+
+    # Download correct ChromeDriver version
+    driver_url = f"https://chromedriver.storage.googleapis.com/LATEST_RELEASE_{major_version}"
+    latest_driver_version = requests.get(driver_url).text.strip()
+
+    download_url = f"https://chromedriver.storage.googleapis.com/{latest_driver_version}/chromedriver_linux64.zip"
+    with open("chromedriver.zip", "wb") as f:
+        f.write(requests.get(download_url).content)
+
+    with zipfile.ZipFile("chromedriver.zip", "r") as zip_ref:
+        zip_ref.extractall(".")
+
+    shutil.move("chromedriver", "/usr/local/bin/chromedriver")
+    os.chmod("/usr/local/bin/chromedriver", 0o755)
+
+    # Selenium setup
     options = Options()
     if HEADLESS:
         options.add_argument("--headless")
@@ -43,11 +65,8 @@ def start_browser():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-
-    # Google Chrome default install path
     options.binary_location = "/usr/bin/google-chrome"
-    service = Service("/usr/bin/chromedriver")
+    service = Service("/usr/local/bin/chromedriver")
 
     return webdriver.Chrome(service=service, options=options)
     
